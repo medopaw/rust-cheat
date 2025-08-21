@@ -132,6 +132,28 @@ src/
 └── io_boundaries.rs     # 08. I/O 边界处理
 ```
 
+### 📋 Rust 代码审查 Prompt
+
+**`rust-ai-review-checklist.md`** 是让 AI 自己审查 Rust 代码的结构化 prompt。作用是：
+- 发现逻辑错误、性能问题、安全隐患
+- 检查错误处理、类型使用、代码风格
+- 输出结构化的审查报告
+
+#### 🚀 使用方法
+
+**方法一：复制粘贴**
+```bash
+cat rust-ai-review-checklist.md | pbcopy  # 复制后粘贴给 AI
+```
+
+**方法二：Cursor Rules**  
+将文档内容添加到 `.cursor/rules/` 目录下的 `.mdc` 文件中，Cursor 会自动应用这些规则
+
+**方法三：Claude Code**  
+在 `CLAUDE.md` 中添加说明，让 Claude Code 在对 Rust 代码进行 Code Review 时参考这个文档
+
+**使用流程：** 写完代码 → 让 AI 参照此文档 review → 根据反馈修改代码
+
 ## 📚 内容导览
 
 | 模块 | 文件 | 核心内容 |
