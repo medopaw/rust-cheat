@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 skim = "0.15"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+serde_json = "1.0"
 
 [lints.rust]
 warnings = "allow"

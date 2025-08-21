@@ -110,11 +110,19 @@ cd rust-cheat
 cargo run
 ```
 
-程序会启动一个**模糊搜索菜单**，支持：
+程序会启动一个**交互式学习工具**，支持两种模式：
+
+**📚 查看代码文件模式（推荐新手）**：
 - 🔍 **模糊搜索**：输入关键词快速定位
 - ⌨️ **方向键选择**，Enter 确认，ESC 退出
 - 🎯 **自动检测 IDE**：在 VSCode/Cursor/Zed 中自动打开文件
 - 📖 **终端 fallback**：未检测到 IDE 时使用 vi 查看
+
+**🚀 运行代码示例模式（查看效果）**：
+- 🏃 **直接运行**：执行各模块的示例代码
+- 👀 **查看输出**：观察实际运行效果
+- 📝 **教学演示**：每个模块都有完整的演示流程
+- 💡 **实战体验**：通过运行理解 Rust 模式
 
 ### 方式二：直接查看源码
 
@@ -147,7 +155,7 @@ cat rust-ai-review-checklist.md | pbcopy  # 复制后粘贴给 AI
 ```
 
 **方法二：Cursor Rules**  
-将文档内容添加到 `.cursor/rules/` 目录下的 `.mdc` 文件中，Cursor 会自动应用这些规则
+将文档内容添加到 `.cursorrules` 文件中（或新版本的 `.cursor/rules/*.mdc` 文件），Cursor 会自动应用这些规则
 
 **方法三：Claude Code**  
 在 `CLAUDE.md` 中添加说明，让 Claude Code 在对 Rust 代码进行 Code Review 时参考这个文档

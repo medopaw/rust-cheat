@@ -5,7 +5,7 @@
 
 use std::env;
 use std::process::Command;
-use std::io::Cursor;
+use std::io::{self, Cursor};
 use skim::prelude::*;
 
 mod options;
@@ -34,9 +34,30 @@ const MODULES: &[Module] = &[
     Module { name: "09.    💾 I/O Boundaries", file: "io_boundaries.rs", description: "I/O 边界（同步 vs 异步）" },
 ];
 
-fn main() {
-    println!("🦀 Rust Cheat Sheet - 文件内容查看器");
+#[tokio::main]
+async fn main() {
+    println!("🦀 Rust Cheat Sheet - 交互式学习工具");
     println!("===============================================================");
+    
+    let mode_items = vec![
+        "📚 查看代码文件 (推荐新手)".to_string(),
+        "🚀 运行代码示例 (查看效果)".to_string(),
+    ];
+    
+    // 首先选择模式
+    match show_fuzzy_menu(&mode_items) {
+        Ok(Some(0)) => file_browser_mode().await,
+        Ok(Some(1)) => run_examples_mode().await,
+        Ok(None) => println!("再见！👋"),
+        Err(e) => println!("❌ 菜单错误: {}", e),
+        Ok(Some(_)) => println!("❌ 无效选择"),
+    }
+}
+
+// 原有的文件浏览模式
+async fn file_browser_mode() {
+    println!("\n📚 进入文件查看模式");
+    println!("=================");
     
     let items: Vec<String> = MODULES.iter()
         .map(|module| format!("{} - {}", module.name, module.description))
@@ -47,16 +68,86 @@ fn main() {
             Ok(Some(selection)) => {
                 let module = &MODULES[selection];
                 open_file(module);
-                println!(); // 空行分隔
+                println!();
             }
             Ok(None) => {
-                println!("再见！👋");
+                println!("返回主菜单 📚");
                 break;
             }
             Err(e) => {
                 println!("❌ 菜单错误: {}", e);
                 break;
             }
+        }
+    }
+}
+
+// 新增的代码运行模式
+async fn run_examples_mode() {
+    println!("\n🚀 进入代码运行模式");
+    println!("=================");
+    
+    let items: Vec<String> = MODULES.iter()
+        .map(|module| format!("{} - 运行示例代码", module.name))
+        .collect();
+    
+    loop {
+        match show_fuzzy_menu(&items) {
+            Ok(Some(selection)) => {
+                let module = &MODULES[selection];
+                run_module_examples(module).await;
+                println!("\n按 Enter 继续...");
+                let _ = io::stdin().read_line(&mut String::new());
+            }
+            Ok(None) => {
+                println!("返回主菜单 🚀");
+                break;
+            }
+            Err(e) => {
+                println!("❌ 菜单错误: {}", e);
+                break;
+            }
+        }
+    }
+}
+
+// 根据模块运行对应的示例代码
+async fn run_module_examples(module: &Module) {
+    // 清屏提供更好的视觉体验
+    clear_screen();
+    
+    println!("🏃 运行 {} 的示例代码", module.name);
+    println!("===============================================");
+    
+    match module.file {
+        "options.rs" => {
+            options::run_all_demos();
+        }
+        "async_demo.rs" => {
+            async_demo::run_all_demos().await;
+        }
+        "errors.rs" => {
+            if let Err(e) = errors::run_all_demos() {
+                println!("错误处理演示中的预期错误: {}", e);
+            }
+        }
+        "iterators.rs" => {
+            iterators::run_all_demos();
+        }
+        "concurrency.rs" => {
+            println!("🚀 并发演示暂未实现 - 请查看源码");
+        }
+        "logging.rs" => {
+            println!("📝 日志演示暂未实现 - 请查看源码");
+        }
+        "pattern_matching.rs" => {
+            println!("🎯 模式匹配演示暂未实现 - 请查看源码");
+        }
+        "io_boundaries.rs" => {
+            println!("💾 I/O边界演示暂未实现 - 请查看源码");
+        }
+        _ => {
+            println!("❌ 未知模块: {}", module.file);
         }
     }
 }
@@ -175,5 +266,15 @@ fn open_in_terminal(file_path: &str) {
     match status {
         Ok(_) => println!("✅ 文件查看完成"),
         Err(e) => println!("❌ 打开文件失败: {}", e),
+    }
+}
+
+// 清屏函数
+fn clear_screen() {
+    // 跨平台清屏
+    if cfg!(windows) {
+        let _ = Command::new("cls").status();
+    } else {
+        let _ = Command::new("clear").status();
     }
 }

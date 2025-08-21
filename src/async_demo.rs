@@ -60,15 +60,122 @@ fn main() {
 }
 */
 
-pub fn async_concepts() {
-    println!("async/await 概念演示：");
-    println!("- .await：非阻塞等待，挂起当前 async 任务");
-    println!("- block_on：阻塞当前线程直到 Future 完成");
+// 🎯 这是AI写异步代码时最常用的模式
+// review时看：async fn调用必须.await，#[tokio::main]说明需要runtime
+use std::time::Duration;
+use tokio::time::sleep;
+
+// 模拟一个异步API调用（AI最常写的模式）
+async fn fetch_user_data(user_id: u32) -> Result<String, &'static str> {
+    if user_id == 0 {
+        return Err("invalid user id");
+    }
+    
+    // 模拟网络延迟
+    sleep(Duration::from_millis(100)).await;
+    
+    Ok(format!("User data for ID: {}", user_id))
 }
 
-pub fn await_types_demo() {
-    println!("await? 类型流演示：");
-    println!("1) fetch() -> impl Future<Output = Result<String, Error>>");
-    println!("2) fetch().await -> Result<String, Error>");
-    println!("3) fetch().await? -> String (或提前返回 Err)");
+// 🎯 训练：识别async函数的调用链
+// review重点：每个async函数调用都有.await，错误用?传播
+pub async fn async_chain_demo() -> Result<(), &'static str> {
+    println!("=== 快速识别：async函数调用链 ===");
+    
+    // 类型流转：fetch_user_data() -> Future<Result<String, &str>>
+    //          fetch_user_data().await -> Result<String, &str>  
+    //          fetch_user_data().await? -> String
+    let user_data = fetch_user_data(1).await?;
+    println!("✅ 获取用户数据: {}", user_data);
+    
+    // AI常见模式：在async函数中调用其他async函数
+    let user_count = count_users().await;
+    println!("用户总数: {}", user_count);
+    
+    Ok(())
+}
+
+// 🎯 另一个异步函数示例（AI常写的统计类操作）
+async fn count_users() -> u32 {
+    sleep(Duration::from_millis(50)).await;  // 模拟查询延迟
+    42  // 返回用户数量
+}
+
+// 🎯 训练：识别异步并发模式
+// review重点：AI可能不知道tokio::join!，会串行执行本该并行的任务
+pub async fn concurrency_demo() {
+    println!("=== 快速识别：异步并发模式 ===");
+    
+    // ❌ AI常见问题：串行执行（低效）
+    println!("串行执行（低效）:");
+    let start = std::time::Instant::now();
+    let _user1 = fetch_user_data(1).await;
+    let _user2 = fetch_user_data(2).await;
+    println!("串行耗时: {:?}", start.elapsed());
+    
+    // ✅ 正确模式：并行执行
+    println!("并行执行（高效）:");
+    let start = std::time::Instant::now();
+    let (result1, result2) = tokio::join!(
+        fetch_user_data(1),
+        fetch_user_data(2)
+    );
+    println!("并行耗时: {:?}", start.elapsed());
+    println!("结果1: {:?}, 结果2: {:?}", result1, result2);
+}
+
+// 🎯 实际场景：用户数据获取系统
+// 这是AI写微服务时的典型模式，练习快速抓住异步逻辑
+pub async fn realistic_user_service() {
+    println!("=== 实际场景：用户服务异步逻辑 ===");
+    
+    let user_id = 1;
+    
+    // 步骤1：获取用户基本信息
+    match fetch_user_data(user_id).await {
+        Ok(user_data) => {
+            println!("步骤1: 获取用户数据成功");
+            
+            // 步骤2：并发获取相关数据
+            let (user_count, _permissions) = tokio::join!(
+                count_users(),
+                async { "admin" }  // 模拟权限查询
+            );
+            
+            println!("步骤2: 用户总数={}, 用户数据={}", user_count, user_data);
+        },
+        Err(e) => {
+            println!("❌ 获取用户数据失败: {}", e);
+            return;
+        }
+    }
+}
+
+// 🎯 概念演示：async vs sync的区别
+// 帮助理解AI什么时候会选择async
+pub fn async_concepts_explanation() {
+    println!("=== async/await 核心概念理解 ===");
+    println!("- async fn: 返回Future，调用时需要.await");
+    println!("- .await: 非阻塞等待，让出线程给其他任务");
+    println!("- #[tokio::main]: 创建异步runtime执行async main");
+    println!("- AI选择async的场景: 网络IO、文件IO、数据库操作");
+}
+
+// 🎯 主演示函数：展示所有异步模式
+pub async fn run_all_demos() {
+    println!("🚀 Async/Await模式 - AI代码快速理解训练");
+    println!("=======================================");
+    
+    async_concepts_explanation();
+    println!();
+    
+    if let Err(e) = async_chain_demo().await {
+        println!("❌ 异步链演示失败: {}", e);
+    }
+    println!();
+    
+    concurrency_demo().await;
+    println!();
+    
+    realistic_user_service().await;
 }
