@@ -1,4 +1,4 @@
-# 🦀 Rust Cheat Sheet - AI 编程速查手册
+# 🦀 Rust for AI Coding - 快速理解与 Code Review 指南
 
 > **Focus: 快速读懂/Review 逻辑，而非抠细节**  
 > Learn X in Y Minutes 风格的 Rust 教学资源
