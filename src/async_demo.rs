@@ -1,37 +1,61 @@
 /*
-===============================================================
-02. async/await 模式 - AI Coding 快速理解指南
-===============================================================
 
-🎯 业务场景：
-- Web 服务、API 客户端、数据库操作、文件 I/O
-- 高并发场景（相比线程，async 任务开销更小）
-- I/O 密集型应用（等待网络/磁盘时不阻塞线程）
+# 02. async/await 模式 - AI Coding 快速理解指南
 
-🔍 30秒识别 async 代码：
-- 看函数签名：async fn -> 返回 Future，调用时需要 .await
-- 看调用链：fetch().await? 的类型流转（Future -> Result -> T）
-- 看 main 函数：#[tokio::main] 或 block_on 包装
-- 看错误处理：async 中的 ? 如何在异步上下文中传播
+---
 
-⚠️ AI 常见问题：
-❌ 忘记 .await，导致得到 Future 而不是实际值
-❌ 在同步上下文中直接调用 async 函数
-❌ 混用 block_on 和 .await（可能导致死锁）
-❌ 在 async fn 中使用阻塞的同步 I/O（如 std::fs）
+## 🎯 业务场景对照表
 
-✅ Review 清单：
-- [ ] async fn 的所有调用都有 .await 吗？
-- [ ] 错误类型是否兼容（实现了 Into<Error>）？
-- [ ] 是否避免了同步 I/O（用 tokio::fs 而非 std::fs）？
-- [ ] 是否在合适的地方使用 spawn 来并发执行？
+| 类型 | 用途 | 典型示例 |
+|------|------|----------|
+| `async fn` | 异步函数定义 | API 调用、数据库操作 |
+| `.await` | 等待 Future 完成 | 网络请求、文件 I/O |
+| `#[tokio::main]` | 异步 main 函数 | Web 服务、异步应用启动 |
+| `spawn` | 并发执行任务 | 后台任务、并行处理 |
 
-📖 阅读顺序：
-1. 先看 main 函数的 async 包装（#[tokio::main] 还是 block_on）
+## 🔍 30秒识别要点
+
+**快速判断方法：**
+
+- 👀 **看函数签名**: `async fn` 返回 Future，调用时需要 `.await`
+- 🔧 **看调用链**: `fetch().await?` 的类型流转（Future → Result → T）  
+- ⚠️ **看 main 函数**: `#[tokio::main]` 或 `block_on` 包装
+
+## ⚠️ AI 常见问题警告
+
+> **危险信号** 🚨
+
+- 🔴 **忘记 .await** 导致得到 Future 而不是实际值
+- 🔴 **上下文混用** 在同步上下文中直接调用 async 函数  
+- 🔴 **死锁风险** 混用 `block_on` 和 `.await`
+- 🔴 **阻塞 I/O** 在 async fn 中使用同步 I/O（如 std::fs）
+
+## ✅ Code Review 检查清单
+
+☐ async fn 的所有调用都有 .await 吗？  
+☐ 错误类型是否兼容（实现了 Into<Error>）？  
+☐ 是否避免了同步 I/O（用 tokio::fs 而非 std::fs）？  
+☐ 是否在合适的地方使用 spawn 来并发执行？
+
+## 📖 推荐阅读顺序
+
+**Step 1: async 环境检查**  
+先看 main 函数的 async 包装（#[tokio::main] 还是 block_on）
+
+**Step 2: 异步调用分析**  
+再看异步函数调用是否正确使用 .await
+
+**Step 3: I/O 操作验证**  
+最后看是否使用了合适的异步 I/O 库
+
+---
+
+> 💡 **记住**: async/await 是并发而非并行，不要混淆！
 2. 再看 async fn 调用链，确认每个异步调用都有 .await
 3. 最后看错误类型流转，确认 ? 操作符的类型匹配
 
 类型流转关键理解：
+```rust
 // 假设：async fn fetch() -> Result<String, SomeError>
 // 则：
 // 1) fetch() 的类型：impl Future<Output = Result<String, SomeError>>
@@ -58,6 +82,8 @@ fn main() {
     let out = block_on(say()); // 阻塞直到完成
     println!("{}", out);
 }
+```
+
 */
 
 // 🎯 这是AI写异步代码时最常用的模式
