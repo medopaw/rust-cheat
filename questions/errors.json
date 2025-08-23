@@ -1,0 +1,56 @@
+{
+  "module": "Errors",
+  "questions": [
+    {
+      "id": "errors_001",
+      "title": "配置文件读取错误管理",
+      "description": "需要实现一个配置文件读取函数，要求：\n- 读取JSON配置文件\n- 解析JSON内容\n- 提供清晰的错误信息给用户\n- 处理文件不存在、格式错误等情况",
+      "code": "use serde_json::Value;\nuse std::fs;\n\nfn load_config(path: &str) -> Result<Value, Box<dyn std::error::Error>> {\n    let content = fs::read_to_string(path)?;\n    let config: Value = serde_json::from_str(&content)?;\n    Ok(config)\n}\n\nfn main() {\n    match load_config(\"config.json\") {\n        Ok(config) => println!(\"配置加载成功: {:?}\", config),\n        Err(e) => println!(\"错误: {}\", e),\n    }\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "错误信息对用户不友好，需要添加上下文",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "应该使用 anyhow 来改善错误处理",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "函数返回类型应该是具体的错误类型",
+          "is_correct": false
+        },
+        {
+          "id": "opt_d",
+          "content": "缺少对文件路径有效性的检查",
+          "is_correct": true
+        },
+        {
+          "id": "opt_e",
+          "content": "JSON解析错误时用户无法知道具体哪里出错",
+          "is_correct": true
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码实现完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "原始错误信息可能是 'No such file' 或 JSON 解析错误，用户需要更清晰的提示",
+        "opt_b": "anyhow::Context 可以为错误添加上下文信息，提升用户体验",
+        "opt_c": "Box<dyn std::error::Error> 是合适的，可以处理多种错误类型",
+        "opt_d": "可以预先检查路径是否存在，提供更好的错误信息",
+        "opt_e": "JSON 解析错误信息往往很技术化，需要转换为用户友好的提示",
+        "opt_f": "代码虽然能工作，但错误处理体验不佳"
+      },
+      "key_points": [
+        "错误处理的关键是提供有用的上下文信息",
+        "技术错误信息需要转换为用户能理解的语言",
+        "anyhow 是 Rust 中处理应用级错误的好工具"
+      ]
+    }
+  ]
+}

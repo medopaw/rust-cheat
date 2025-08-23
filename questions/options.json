@@ -1,0 +1,56 @@
+{
+  "module": "Options",
+  "questions": [
+    {
+      "id": "options_001",
+      "title": "用户输入验证函数",
+      "description": "需要实现一个用户输入验证函数，要求：\n- 接受用户输入的字符串\n- 验证输入不为空且长度在3-20字符之间\n- 返回验证结果，如果无效则说明原因\n- 支持邮箱格式的基本验证",
+      "code": "fn validate_user_input(input: &str) -> Result<String, String> {\n    if input.is_empty() {\n        return Err(\"输入不能为空\".to_string());\n    }\n    \n    if input.len() < 3 {\n        return Err(\"输入太短\".to_string());\n    }\n    \n    if input.contains('@') {\n        if !input.contains('.') {\n            return Err(\"邮箱格式无效\".to_string());\n        }\n    }\n    \n    Ok(input.to_string())\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "缺少对最大长度的检查",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "邮箱验证逻辑过于简单，无法处理复杂情况",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c", 
+          "content": "函数名称不够清晰",
+          "is_correct": false
+        },
+        {
+          "id": "opt_d",
+          "content": "应该使用 Option 而不是 Result",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "缺少对特殊字符的处理",
+          "is_correct": true
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码实现完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "需求明确要求长度在3-20字符之间，但代码只检查了最小长度，遗漏了最大长度检查",
+        "opt_b": "简单的包含'@'和'.'检查无法验证真实的邮箱格式，如'@.'也会通过",
+        "opt_c": "函数名validate_user_input已经很清晰地表达了其功能",
+        "opt_d": "Result类型很适合这里，因为需要返回具体的错误信息",
+        "opt_e": "需求未提及特殊字符处理，这不是必需的功能",
+        "opt_f": "代码存在多个问题，并不完全正确"
+      },
+      "key_points": [
+        "仔细阅读需求，确保所有条件都被实现",
+        "简单的字符串包含检查往往不足以进行格式验证",
+        "边界条件（如最大值）容易被遗漏"
+      ]
+    }
+  ]
+}

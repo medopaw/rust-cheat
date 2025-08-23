@@ -1,0 +1,56 @@
+{
+  "module": "Async",
+  "questions": [
+    {
+      "id": "async_001",
+      "title": "异步HTTP请求处理",
+      "description": "需要实现一个异步HTTP请求处理函数，要求：\n- 并发处理多个HTTP请求\n- 请求超时设置为5秒\n- 失败的请求应该返回错误信息\n- 成功的请求应该返回响应数据",
+      "code": "use tokio::time::{timeout, Duration};\n\nasync fn process_urls(urls: Vec<&str>) -> Vec<Result<String, String>> {\n    let mut results = Vec::new();\n    \n    for url in urls {\n        let result = timeout(Duration::from_secs(5), fetch_url(url)).await;\n        match result {\n            Ok(Ok(data)) => results.push(Ok(data)),\n            Ok(Err(e)) => results.push(Err(format!(\"请求失败: {}\", e))),\n            Err(_) => results.push(Err(\"请求超时\".to_string())),\n        }\n    }\n    \n    results\n}\n\nasync fn fetch_url(url: &str) -> Result<String, Box<dyn std::error::Error>> {\n    // 模拟HTTP请求\n    Ok(format!(\"响应数据来自: {}\", url))\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "缺少并发处理，应该使用 join! 或 try_join_all",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "超时处理是正确的",
+          "is_correct": false
+        },
+        {
+          "id": "opt_c",
+          "content": "错误处理缺少具体的错误类型",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "函数签名应该返回 Future",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "顺序处理导致性能不佳",
+          "is_correct": true
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码实现完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "当前代码是顺序处理，没有利用异步的并发优势，应该使用 join! 或类似方法",
+        "opt_b": "超时处理使用了正确的 tokio::time::timeout",
+        "opt_c": "使用 Box<dyn std::error::Error> 虽然可以编译，但对于HTTP请求应该有更具体的错误类型",
+        "opt_d": "异步函数返回 impl Future 是正确的，这里的返回类型是合适的",
+        "opt_e": "for 循环导致请求串行执行，没有发挥异步并发的优势",
+        "opt_f": "代码存在并发性能问题"
+      },
+      "key_points": [
+        "异步代码的关键是要真正实现并发，而不只是使用 async/await 语法",
+        "join! 和 try_join! 是实现并发的重要工具",
+        "错误处理要考虑异步场景的特殊性"
+      ]
+    }
+  ]
+}

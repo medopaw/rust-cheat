@@ -1,0 +1,56 @@
+{
+  "module": "Iterators",
+  "questions": [
+    {
+      "id": "iterators_001",
+      "title": "数据统计处理",
+      "description": "需要实现一个数据统计函数，要求：\n- 计算数值列表的总和、平均值、最大值、最小值\n- 过滤掉无效数据（负数）\n- 返回统计结果结构体\n- 处理空列表的情况",
+      "code": "#[derive(Debug)]\nstruct Stats {\n    sum: f64,\n    avg: f64,\n    max: f64,\n    min: f64,\n    count: usize,\n}\n\nfn calculate_stats(numbers: Vec<i32>) -> Option<Stats> {\n    let valid_numbers: Vec<f64> = numbers\n        .iter()\n        .filter(|&&n| n >= 0)\n        .map(|&n| n as f64)\n        .collect();\n    \n    if valid_numbers.is_empty() {\n        return None;\n    }\n    \n    let sum = valid_numbers.iter().sum();\n    let count = valid_numbers.len();\n    let avg = sum / count as f64;\n    let max = valid_numbers.iter().fold(f64::MIN, |acc, &x| acc.max(x));\n    let min = valid_numbers.iter().fold(f64::MAX, |acc, &x| acc.min(x));\n    \n    Some(Stats { sum, avg, max, min, count })\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "使用 collect() 是不必要的，浪费内存",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "max/min 的初始值使用不当",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "应该直接使用迭代器的 max() 和 min() 方法",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "过滤条件应该检查是否为零",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "需要多次遍历，效率不高",
+          "is_correct": true
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码实现完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "可以在迭代过程中直接计算统计值，无需先收集到Vec",
+        "opt_b": "f64::MIN 和 f64::MAX 用于初始化不合适，应该用第一个元素或迭代器方法",
+        "opt_c": "迭代器的 max() 和 min() 方法更简洁且正确",
+        "opt_d": "需求是过滤负数，零是有效数据",
+        "opt_e": "当前实现需要多次遍历同一个向量，可以一次遍历计算所有统计值",
+        "opt_f": "代码有效率和实现方式的问题"
+      },
+      "key_points": [
+        "迭代器链式调用要考虑内存效率，避免不必要的中间集合",
+        "统计计算可以在一次遍历中完成",
+        "使用标准库提供的方法通常比手动fold更清晰"
+      ]
+    }
+  ]
+}

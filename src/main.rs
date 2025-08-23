@@ -76,6 +76,7 @@ mod concurrency;
 mod logging;
 mod pattern_matching;
 mod io_boundaries;
+mod quiz;
 
 struct Module {
     name: &'static str,
@@ -561,6 +562,29 @@ async fn run_module_examples(module: &Module) {
         }
         _ => {
             println!("❌ 未知模块: {}", module.file);
+        }
+    }
+    
+    println!("\n===============================================");
+    println!("🎯 示例代码演示完成！");
+    
+    // 运行完示例代码后自动开始做题环节
+    println!("\n按 Enter 进入 Code Review 练习环节...");
+    let mut input = String::new();
+    if let Ok(_) = io::stdin().read_line(&mut input) {
+        // 直接开始做题，不提供跳过选项
+        match quiz::run_module_quiz(module.name).await {
+            Ok(completed) => {
+                if completed {
+                    println!("\n🎉 恭喜完成 {} 模块的 Code Review 练习！", module.name);
+                    println!("你已经掌握了在实际 AI Coding 中审查这类代码的关键技能。");
+                } else {
+                    println!("\n📚 练习已结束，你可以随时再次挑战！");
+                }
+            }
+            Err(e) => {
+                println!("❌ 练习过程中出现错误: {}", e);
+            }
         }
     }
 }
