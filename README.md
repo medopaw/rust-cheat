@@ -7,7 +7,7 @@
 
 ### 💬 项目起源
 
-这个项目诞生于一次关于 AI 时代 Rust 学习方法的深度对话。完整的对话记录保存在 [`chatgpt-chat-history.md`](./chatgpt-chat-history.md) 文件中，记录了从"为什么要学 Rust"到"如何快速理解 Rust 代码"的完整思考过程。
+这个项目诞生于一次关于 AI 时代 Rust 学习方法的深度对话。完整的对话记录保存在 [`docs/chatgpt-chat-history.md`](./docs/chatgpt-chat-history.md) 文件中，记录了从"为什么要学 Rust"到"如何快速理解 Rust 代码"的完整思考过程。
 
 在这次对话中，我们发现传统的 Rust 学习路径（从所有权开始，逐步深入语法细节）并不适合已经在使用 AI 工具编程的开发者。相反，**快速建立代码阅读和审查能力**才是 AI Coding 时代最实用的技能。
 
@@ -142,7 +142,7 @@ src/
 
 ### 📋 Rust 代码审查 Prompt
 
-**`rust-ai-review-checklist.md`** 是让 AI 自己审查 Rust 代码的结构化 prompt。作用是：
+**[`docs/rust-ai-review-checklist.md`](./docs/rust-ai-review-checklist.md)** 是让 AI 自己审查 Rust 代码的结构化 prompt。作用是：
 - 发现逻辑错误、性能问题、安全隐患
 - 检查错误处理、类型使用、代码风格
 - 输出结构化的审查报告
@@ -151,7 +151,7 @@ src/
 
 **方法一：复制粘贴**
 ```bash
-cat rust-ai-review-checklist.md | pbcopy  # 复制后粘贴给 AI
+cat docs/rust-ai-review-checklist.md | pbcopy  # 复制后粘贴给 AI
 ```
 
 **方法二：Cursor Rules**  
