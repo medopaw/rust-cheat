@@ -540,7 +540,7 @@ fn run_skim_menu(items: &[String]) -> Result<Option<usize>, Box<dyn std::error::
     
     // 配置 skim 选项
     let options = SkimOptionsBuilder::default()
-        .height(String::from("50%"))
+        .height(String::from("12"))
         .multi(false)
         .prompt(String::from("🔍 搜索: "))
         .header(Some("使用箭头键选择，Enter 确认，ESC 退出".to_string()))
