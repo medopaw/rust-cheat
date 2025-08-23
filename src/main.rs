@@ -46,13 +46,13 @@ async fn main() {
         .collect();
     
     loop {
+        clear_screen();
         match show_fuzzy_menu(&items) {
             Ok(Some(selection)) => {
                 let module = &MODULES[selection];
                 integrated_module_experience(module).await;
                 println!("\n按 Enter 继续...");
                 let _ = io::stdin().read_line(&mut String::new());
-                clear_screen();
             }
             Ok(None) => {
                 println!("再见！👋");
@@ -81,7 +81,18 @@ async fn integrated_module_experience(module: &Module) {
     display_module_comments(&file_path);
     println!();
     
-    // 第二步：在 IDE 中打开文件（如果可能）
+    // 第二步：用户确认后在 IDE 中打开文件并运行示例
+    clear_screen();
+    let ide_name = detect_ide_name();
+    if ide_name != "未知IDE" {
+        println!("\n💡 接下来将在 {} 中打开文件: {}", ide_name, file_path);
+    } else {
+        println!("\n💡 接下来将在 IDE 中打开文件: {}", file_path);
+    }
+    println!("   然后运行示例代码演示模块功能");
+    println!("\n按 Enter 继续...");
+    let _ = io::stdin().read_line(&mut String::new());
+    
     let ide_opened = open_in_ide_if_available(&file_path);
     
     // 第三步：运行示例代码
@@ -612,6 +623,19 @@ fn is_in_ide() -> bool {
     env::var("CURSOR_SESSION_ID").is_ok() ||
     env::var("ZED").is_ok() ||
     env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false)
+}
+
+fn detect_ide_name() -> &'static str {
+    // 检测具体的 IDE 名称
+    if env::var("VSCODE_PID").is_ok() || env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false) {
+        "VSCode"
+    } else if env::var("CURSOR_SESSION_ID").is_ok() {
+        "Cursor"
+    } else if env::var("ZED").is_ok() {
+        "Zed"
+    } else {
+        "未知IDE"
+    }
 }
 
 fn get_file_path(filename: &str) -> String {
