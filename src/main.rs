@@ -52,6 +52,7 @@ async fn main() {
                 integrated_module_experience(module).await;
                 println!("\n按 Enter 继续...");
                 let _ = io::stdin().read_line(&mut String::new());
+                clear_screen();
             }
             Ok(None) => {
                 println!("再见！👋");
