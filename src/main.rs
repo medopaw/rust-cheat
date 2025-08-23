@@ -10,6 +10,64 @@ use skim::prelude::*;
 use std::path::Path;
 use std::fs;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Ide {
+    VSCode,
+    Cursor,
+    Zed,
+    None,
+}
+
+impl Ide {
+    fn detect() -> Self {
+        if env::var("VSCODE_PID").is_ok() || env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false) {
+            Self::VSCode
+        } else if env::var("CURSOR_SESSION_ID").is_ok() {
+            Self::Cursor
+        } else if env::var("ZED").is_ok() {
+            Self::Zed
+        } else {
+            Self::None
+        }
+    }
+    
+    fn name(&self) -> &'static str {
+        match self {
+            Self::VSCode => "VSCode",
+            Self::Cursor => "Cursor", 
+            Self::Zed => "Zed",
+            Self::None => "未知IDE",
+        }
+    }
+    
+    fn command(&self) -> Option<&'static str> {
+        match self {
+            Self::VSCode => Some("code"),
+            Self::Cursor => Some("cursor"),
+            Self::Zed => Some("zed"),
+            Self::None => None,
+        }
+    }
+    
+    fn is_available(&self) -> bool {
+        !matches!(self, Self::None)
+    }
+    
+    fn try_open_file(&self, file_path: &str) -> bool {
+        if let Some(cmd) = self.command() {
+            match Command::new(cmd).arg(file_path).status() {
+                Ok(_) => {
+                    println!("✅ 已在 {} 中打开文件", self.name());
+                    true
+                }
+                Err(_) => false,
+            }
+        } else {
+            false
+        }
+    }
+}
+
 mod options;
 mod async_demo;
 mod errors;
@@ -83,9 +141,9 @@ async fn integrated_module_experience(module: &Module) {
     
     // 第二步：用户确认后在 IDE 中打开文件并运行示例
     clear_screen();
-    let ide_name = detect_ide_name();
-    if ide_name != "未知IDE" {
-        println!("\n💡 接下来将在 {} 中打开文件: {}", ide_name, file_path);
+    let ide = Ide::detect();
+    if ide.is_available() {
+        println!("\n💡 接下来将在 {} 中打开文件: {}", ide.name(), file_path);
     } else {
         println!("\n💡 接下来将在 IDE 中打开文件: {}", file_path);
     }
@@ -451,38 +509,19 @@ fn display_comments_fallback(file_path: &str) {
 
 // 尝试在 IDE 中打开文件，返回是否成功
 fn open_in_ide_if_available(file_path: &str) -> bool {
-    if !is_in_ide() {
+    let ide = Ide::detect();
+    if !ide.is_available() {
         return false;
     }
     
     println!("🔍 在 IDE 中打开文件: {}", file_path);
     
-    // 尝试 VSCode
-    if env::var("VSCODE_PID").is_ok() || env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false) {
-        if let Ok(_) = Command::new("code").arg(file_path).status() {
-            println!("✅ 已在 VSCode 中打开文件");
-            return true;
-        }
+    if ide.try_open_file(file_path) {
+        true
+    } else {
+        println!("⚠️  IDE 命令执行失败");
+        false
     }
-    
-    // 尝试 Cursor
-    if env::var("CURSOR_SESSION_ID").is_ok() {
-        if let Ok(_) = Command::new("cursor").arg(file_path).status() {
-            println!("✅ 已在 Cursor 中打开文件");
-            return true;
-        }
-    }
-    
-    // 尝试 Zed
-    if env::var("ZED").is_ok() {
-        if let Ok(_) = Command::new("zed").arg(file_path).status() {
-            println!("✅ 已在 Zed 中打开文件");
-            return true;
-        }
-    }
-    
-    println!("⚠️  IDE 命令执行失败");
-    false
 }
 
 // 根据模块运行对应的示例代码
@@ -532,7 +571,7 @@ fn show_fuzzy_menu(items: &[String]) -> Result<Option<usize>, Box<dyn std::error
         return show_simple_menu(items);
     }
     
-    println!("\n🎯 选择学习模块（支持模糊搜索，ESC 退出）:");
+    println!("\n🎯 选择学习模块（使用箭头键选择，ESC 退出）:");
     
     // 尝试运行 skim，如果失败就回退到简单菜单
     match run_skim_menu(items) {
@@ -554,7 +593,7 @@ fn run_skim_menu(items: &[String]) -> Result<Option<usize>, Box<dyn std::error::
     let options = SkimOptionsBuilder::default()
         .height(String::from("12"))
         .multi(false)
-        .prompt(String::from("🔍 搜索: "))
+        .prompt(String::from(""))
         .header(Some("使用箭头键选择，Enter 确认，ESC 退出".to_string()))
         .layout(String::from("reverse"))
         .build()?;
@@ -617,26 +656,6 @@ fn show_simple_menu(items: &[String]) -> Result<Option<usize>, Box<dyn std::erro
     }
 }
 
-fn is_in_ide() -> bool {
-    // 检查环境变量来判断是否在 IDE 中
-    env::var("VSCODE_PID").is_ok() ||
-    env::var("CURSOR_SESSION_ID").is_ok() ||
-    env::var("ZED").is_ok() ||
-    env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false)
-}
-
-fn detect_ide_name() -> &'static str {
-    // 检测具体的 IDE 名称
-    if env::var("VSCODE_PID").is_ok() || env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false) {
-        "VSCode"
-    } else if env::var("CURSOR_SESSION_ID").is_ok() {
-        "Cursor"
-    } else if env::var("ZED").is_ok() {
-        "Zed"
-    } else {
-        "未知IDE"
-    }
-}
 
 fn get_file_path(filename: &str) -> String {
     format!("src/{}", filename)
@@ -647,8 +666,9 @@ fn open_file(module: &Module) {
     
     println!("📂 打开文件: {} - {}", module.name, module.description);
     
-    if is_in_ide() {
-        println!("🔍 检测到 IDE 环境，尝试在 IDE 中打开文件...");
+    let ide = Ide::detect();
+    if ide.is_available() {
+        println!("🔍 检测到 {} 环境，尝试在 IDE 中打开文件...", ide.name());
         open_in_ide(&file_path);
     } else {
         println!("🔍 未检测到 IDE 环境，使用 vi 打开文件...");
@@ -657,34 +677,12 @@ fn open_file(module: &Module) {
 }
 
 fn open_in_ide(file_path: &str) {
-    let mut success = false;
+    let ide = Ide::detect();
     
-    // 尝试 VSCode
-    if env::var("VSCODE_PID").is_ok() || env::var("TERM_PROGRAM").map(|t| t == "vscode").unwrap_or(false) {
-        if let Ok(_) = Command::new("code").arg(file_path).status() {
-            println!("✅ 已在 VSCode 中打开文件");
-            success = true;
-        }
-    }
-    
-    // 尝试 Cursor
-    if !success && env::var("CURSOR_SESSION_ID").is_ok() {
-        if let Ok(_) = Command::new("cursor").arg(file_path).status() {
-            println!("✅ 已在 Cursor 中打开文件");
-            success = true;
-        }
-    }
-    
-    // 尝试 Zed
-    if !success && env::var("ZED").is_ok() {
-        if let Ok(_) = Command::new("zed").arg(file_path).status() {
-            println!("✅ 已在 Zed 中打开文件");
-            success = true;
-        }
-    }
-    
-    // 如果 IDE 命令失败，fallback 到终端
-    if !success {
+    if ide.try_open_file(file_path) {
+        // 成功在 IDE 中打开文件
+    } else {
+        // 如果 IDE 命令失败，fallback 到终端
         println!("⚠️  IDE 命令执行失败，fallback 到终端查看...");
         open_in_terminal(file_path);
     }
