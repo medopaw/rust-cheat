@@ -1,0 +1,107 @@
+{
+  "module": "Pattern",
+  "questions": [
+    {
+      "id": "pattern_001", 
+      "title": "API响应解析器",
+      "description": "需要实现一个API响应解析器，要求：\n- 解析JSON响应中的用户信息\n- 处理不同的响应格式\n- 验证必需字段\n- 返回结构化的用户数据",
+      "code": "use serde_json::Value;\n\n#[derive(Debug, Clone)]\nstruct User {\n    id: u64,\n    name: String,\n    email: Option<String>,\n    status: UserStatus,\n}\n\n#[derive(Debug, Clone)]\nenum UserStatus {\n    Active,\n    Inactive,\n    Suspended(String), // 包含原因\n}\n\nfn parse_user_response(json: Value) -> Result<User, String> {\n    let id = json[\"id\"].as_u64().unwrap();\n    let name = json[\"name\"].as_str().unwrap().to_string();\n    \n    let email = if json[\"email\"].is_null() {\n        None\n    } else {\n        Some(json[\"email\"].as_str().unwrap().to_string())\n    };\n    \n    let status = match json[\"status\"].as_str() {\n        Some(\"active\") => UserStatus::Active,\n        Some(\"inactive\") => UserStatus::Inactive,\n        Some(status_str) => {\n            if status_str.starts_with(\"suspended:\") {\n                let reason = status_str.split(':').nth(1).unwrap_or(\"\").to_string();\n                UserStatus::Suspended(reason)\n            } else {\n                return Err(format!(\"未知状态: {}\", status_str));\n            }\n        }\n        None => return Err(\"状态字段缺失\".to_string()),\n    };\n    \n    Ok(User { id, name, email, status })\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "过度使用 unwrap()，可能导致 panic",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b", 
+          "content": "email 字段处理可以用更优雅的模式匹配",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "suspended 状态解析逻辑过于复杂，应该简化",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "应该使用 if let 替代所有 match 语句",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "match 分支没有覆盖所有情况",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码模式匹配完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "应该用 ? 操作符或适当的错误处理替代 unwrap()，避免意外 panic",
+        "opt_b": "可以用 match json.get(\"email\") { Some(Value::String(s)) => Some(s.clone()), _ => None } 更清晰",
+        "opt_c": "可以考虑用正则表达式或更结构化的方式解析 suspended:reason 格式",
+        "opt_d": "这里 match 是合适的，因为需要处理多个分支，if let 主要用于只关心一种情况",
+        "opt_e": "match 分支已经用 Some() 和 None 覆盖了所有可能的情况",
+        "opt_f": "代码存在错误处理和模式匹配优化问题"
+      },
+      "key_points": [
+        "避免过度使用 unwrap()，用 ? 操作符进行错误传播",
+        "选择合适的模式匹配方式：match 用于多分支，if let 用于单一关注",
+        "考虑使用更结构化的方式处理复杂的字符串解析"
+      ]
+    },
+    {
+      "id": "pattern_002",
+      "title": "配置文件处理器",
+      "description": "需要实现一个配置文件处理器，要求：\n- 处理不同类型的配置项\n- 支持嵌套配置结构\n- 提供默认值机制\n- 验证配置的完整性",
+      "code": "#[derive(Debug, Clone)]\nenum ConfigValue {\n    String(String),\n    Integer(i64),\n    Boolean(bool),\n    Array(Vec<ConfigValue>),\n    Object(std::collections::HashMap<String, ConfigValue>),\n}\n\nstruct Config {\n    database_url: String,\n    port: u16,\n    debug_mode: bool,\n    features: Vec<String>,\n}\n\nfn extract_config(root: ConfigValue) -> Result<Config, String> {\n    if let ConfigValue::Object(ref obj) = root {\n        let database_url = if let Some(ConfigValue::String(url)) = obj.get(\"database_url\") {\n            url.clone()\n        } else {\n            return Err(\"缺少 database_url\".to_string());\n        };\n        \n        let port = if let Some(port_val) = obj.get(\"port\") {\n            if let ConfigValue::Integer(p) = port_val {\n                if *p >= 0 && *p <= 65535 {\n                    *p as u16\n                } else {\n                    return Err(\"端口号超出范围\".to_string());\n                }\n            } else {\n                return Err(\"端口号必须是整数\".to_string());\n            }\n        } else {\n            8080 // 默认端口\n        };\n        \n        let debug_mode = if let Some(ConfigValue::Boolean(debug)) = obj.get(\"debug_mode\") {\n            *debug\n        } else {\n            false\n        };\n        \n        let features = match obj.get(\"features\") {\n            Some(ConfigValue::Array(arr)) => {\n                let mut feature_list = Vec::new();\n                for item in arr {\n                    if let ConfigValue::String(feature) = item {\n                        feature_list.push(feature.clone());\n                    }\n                }\n                feature_list\n            },\n            _ => Vec::new(),\n        };\n        \n        Ok(Config {\n            database_url,\n            port,\n            debug_mode,\n            features,\n        })\n    } else {\n        Err(\"根配置必须是对象\".to_string())\n    }\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "if let 链太长，应该用 match 更清晰",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "过度使用 clone()，可能影响性能",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "features 数组处理忽略了非字符串项，应该报错",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "缺少对嵌套对象的解构模式",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "端口号验证逻辑应该移到单独函数",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码配置处理完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "深层嵌套的 if let 不如 match 清晰，特别是有多个相关字段时",
+        "opt_b": "可以考虑使用引用或移动语义优化，减少不必要的 clone()",
+        "opt_c": "遇到非字符串的数组项时，应该返回错误而不是静默忽略，确保配置完整性",
+        "opt_d": "当前的扁平解构是合适的，嵌套解构会增加复杂性",
+        "opt_e": "端口验证逻辑虽然可以提取，但当前的复杂度可以接受",
+        "opt_f": "代码存在模式匹配和错误处理的改进空间"
+      },
+      "key_points": [
+        "深层嵌套的 if let 链应该考虑用 match 重构",
+        "注意 clone() 的使用，考虑性能影响",
+        "配置验证要严格，避免静默忽略错误数据"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "module": "Concurrency",
+  "questions": [
+    {
+      "id": "concurrency_001",
+      "title": "多任务数据处理系统",
+      "description": "需要实现一个多任务数据处理系统，要求：\n- 同时处理多个数据源\n- 收集所有处理结果\n- 任一数据源失败时整体失败\n- 支持取消和超时控制",
+      "code": "use tokio::time::{sleep, Duration};\nuse std::sync::{Arc, Mutex};\n\nasync fn process_data_sources(sources: Vec<&str>) -> Result<Vec<String>, Box<dyn std::error::Error>> {\n    let results = Arc::new(Mutex::new(Vec::new()));\n    let mut handles = vec![];\n    \n    for source in sources {\n        let results_clone = Arc::clone(&results);\n        let handle = tokio::spawn(async move {\n            let data = fetch_from_source(source).await?;\n            let processed = process_data(&data).await?;\n            \n            results_clone.lock().unwrap().push(processed);\n            Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())\n        });\n        handles.push(handle);\n    }\n    \n    for handle in handles {\n        handle.await??;\n    }\n    \n    let final_results = results.lock().unwrap().clone();\n    Ok(final_results)\n}\n\nasync fn fetch_from_source(source: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {\n    sleep(Duration::from_millis(100)).await;\n    Ok(format!(\"data from {}\", source))\n}\n\nasync fn process_data(data: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {\n    Ok(format!(\"processed: {}\", data))\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "应该使用 join! 或 try_join! 而不是手动管理 handles",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "Arc<Mutex<>> 在异步代码中可能导致死锁",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "缺少超时控制机制",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "spawn 后的错误处理过于复杂",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "应该使用 Vec<JoinHandle<()>> 而不是泛型",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码实现完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "try_join_all 可以简化代码并自动处理错误传播，比手动管理 handles 更优雅",
+        "opt_b": "在 async 环境中长时间持有 Mutex 会阻塞整个任务，应该使用 tokio::sync::Mutex",
+        "opt_c": "需要使用 tokio::time::timeout 来防止任务无限等待",
+        "opt_d": "handle.await?? 的错误处理是合理的，第一个?处理JoinError，第二个?处理业务错误",
+        "opt_e": "当前的泛型类型是正确的，反映了实际的返回类型",
+        "opt_f": "代码存在并发设计和错误处理问题"
+      },
+      "key_points": [
+        "使用 try_join! 系列宏可以简化并发任务管理",
+        "异步代码中避免使用 std::sync::Mutex，用 tokio::sync::Mutex",
+        "并发任务需要考虑超时和取消机制"
+      ]
+    },
+    {
+      "id": "concurrency_002", 
+      "title": "实时数据聚合器",
+      "description": "需要实现一个实时数据聚合器，要求：\n- 从多个通道接收数据\n- 优先处理高优先级通道\n- 定期输出聚合结果\n- 支持优雅关闭",
+      "code": "use tokio::sync::mpsc;\nuse tokio::time::{interval, Duration};\nuse tokio::select;\n\nstruct DataAggregator {\n    high_priority_rx: mpsc::Receiver<i32>,\n    low_priority_rx: mpsc::Receiver<i32>,\n    shutdown_rx: mpsc::Receiver<()>,\n    total: i32,\n}\n\nimpl DataAggregator {\n    async fn run(&mut self) {\n        let mut timer = interval(Duration::from_secs(5));\n        \n        loop {\n            select! {\n                Some(data) = self.high_priority_rx.recv() => {\n                    self.total += data;\n                    println!(\"高优先级数据: {}\", data);\n                }\n                Some(data) = self.low_priority_rx.recv() => {\n                    self.total += data;\n                    println!(\"低优先级数据: {}\", data);\n                }\n                _ = timer.tick() => {\n                    println!(\"当前总计: {}\", self.total);\n                    self.total = 0;\n                }\n                _ = self.shutdown_rx.recv() => {\n                    println!(\"关闭聚合器\");\n                    return;\n                }\n            }\n        }\n    }\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "select! 分支的顺序会影响优先级处理",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b", 
+          "content": "缺少对通道关闭的处理",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "timer.tick() 可能被其他分支饿死",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "应该使用 tokio::spawn 而不是 select!",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "数据聚合逻辑过于简单",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "shutdown_rx 的设计是多余的",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "select! 按照分支顺序进行优先级匹配，高优先级分支应该放在前面",
+        "opt_b": "当发送端关闭时，recv() 返回 None，需要适当处理避免无限循环",
+        "opt_c": "如果数据频繁到达，定时器分支可能很少被选中，可以考虑使用 biased select",
+        "opt_d": "select! 正适合这种多路复用场景，spawn 会增加不必要的复杂性",
+        "opt_e": "简单的求和聚合符合示例需求，复杂度适中",
+        "opt_f": "优雅关闭机制是生产环境的重要特性"
+      },
+      "key_points": [
+        "select! 宏的分支顺序决定了优先级",
+        "需要处理通道关闭的情况以避免无限循环",
+        "考虑使用 biased select 来保证某些分支不被饿死"
+      ]
+    }
+  ]
+}

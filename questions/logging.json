@@ -1,0 +1,107 @@
+{
+  "module": "Logging",
+  "questions": [
+    {
+      "id": "logging_001",
+      "title": "用户认证服务日志记录",
+      "description": "需要为用户认证服务添加日志记录，要求：\n- 记录用户登录尝试\n- 记录认证失败原因\n- 避免记录敏感信息\n- 便于问题排查和监控",
+      "code": "use tracing::{info, warn, error, instrument};\nuse serde::Serialize;\n\n#[derive(Serialize)]\nstruct LoginRequest {\n    username: String,\n    password: String,\n    ip_address: String,\n    user_agent: String,\n}\n\n#[instrument]\nfn authenticate_user(request: LoginRequest) -> Result<String, AuthError> {\n    println!(\"收到登录请求: {:?}\", request);\n    \n    let user = match find_user(&request.username) {\n        Some(user) => {\n            info!(\"找到用户: {}\", request.username);\n            user\n        }\n        None => {\n            println!(\"用户不存在: {}\", request.username);\n            return Err(AuthError::UserNotFound);\n        }\n    };\n    \n    if !verify_password(&request.password, &user.password_hash) {\n        error!(\"密码错误，用户: {}, 密码: {}\", request.username, request.password);\n        return Err(AuthError::InvalidPassword);\n    }\n    \n    info!(\"用户 {} 登录成功\", request.username);\n    Ok(generate_token(&user))\n}\n\n#[derive(Debug)]\nenum AuthError {\n    UserNotFound,\n    InvalidPassword,\n}\n\nstruct User {\n    username: String,\n    password_hash: String,\n}\n\nfn find_user(username: &str) -> Option<User> { None }\nfn verify_password(password: &str, hash: &str) -> bool { false }\nfn generate_token(user: &User) -> String { String::new() }",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "使用 println! 而不是日志库",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "记录了敏感信息（明文密码）",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "#[instrument] 会自动记录函数参数，包括敏感字段",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "缺少结构化字段，难以查询和过滤",
+          "is_correct": true
+        },
+        {
+          "id": "opt_e",
+          "content": "日志级别使用不当",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码日志记录完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "println! 输出无法配置级别、格式和目标，生产环境应该使用 tracing 或 log 库",
+        "opt_b": "明文密码绝不应该出现在日志中，这是严重的安全漏洞",
+        "opt_c": "需要使用 #[instrument(skip(password))] 来跳过敏感字段的自动记录",
+        "opt_d": "应该使用结构化字段如 info!(username = %request.username, ip = %request.ip_address)",
+        "opt_e": "info、warn、error 的级别选择是合适的",
+        "opt_f": "代码存在严重的安全和可观测性问题"
+      },
+      "key_points": [
+        "永远不要在日志中记录密码、token等敏感信息",
+        "使用 #[instrument(skip(...))] 来跳过敏感字段",
+        "结构化日志比字符串拼接更便于查询和分析"
+      ]
+    },
+    {
+      "id": "logging_002",
+      "title": "订单处理系统追踪",
+      "description": "需要为订单处理系统添加分布式追踪，要求：\n- 跟踪订单处理的完整流程\n- 记录关键业务指标\n- 支持请求ID关联\n- 便于性能监控和故障排查",
+      "code": "use tracing::{info, warn, error, debug, Span, instrument};\nuse std::time::{Duration, Instant};\n\n#[derive(Debug)]\nstruct Order {\n    id: String,\n    user_id: String,\n    amount: f64,\n    items: Vec<String>,\n}\n\n#[instrument(level = \"info\")]\nasync fn process_order(order: Order, request_id: String) -> Result<String, ProcessingError> {\n    let start_time = Instant::now();\n    \n    info!(\"开始处理订单: {}\", order.id);\n    \n    // 验证订单\n    validate_order(&order)?;\n    println!(\"订单验证完成\");\n    \n    // 检查库存\n    let inventory_result = check_inventory(&order.items).await;\n    debug!(\"库存检查结果: {:?}\", inventory_result);\n    \n    // 处理支付\n    let payment_span = tracing::span!(tracing::Level::INFO, \"payment_processing\");\n    let _guard = payment_span.enter();\n    \n    match process_payment(&order.user_id, order.amount).await {\n        Ok(payment_id) => {\n            info!(\"支付成功: {}\", payment_id);\n        }\n        Err(e) => {\n            error!(\"支付失败: {:?}\", e);\n            return Err(ProcessingError::PaymentFailed);\n        }\n    }\n    \n    drop(_guard);\n    \n    let duration = start_time.elapsed();\n    warn!(\"订单 {} 处理耗时: {:?}\", order.id, duration);\n    \n    Ok(\"success\".to_string())\n}\n\nfn validate_order(order: &Order) -> Result<(), ProcessingError> { Ok(()) }\nasync fn check_inventory(items: &[String]) -> bool { true }\nasync fn process_payment(user_id: &str, amount: f64) -> Result<String, PaymentError> { Ok(\"pay_123\".to_string()) }\n\n#[derive(Debug)]\nenum ProcessingError {\n    ValidationFailed,\n    PaymentFailed,\n}\n\n#[derive(Debug)]\nenum PaymentError {\n    InsufficientFunds,\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "混用 println! 和日志库，不一致",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "缺少结构化字段，如 order_id、user_id、amount",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "日志级别选择不当，处理耗时应该用 info 而不是 warn",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "手动 span 管理过于复杂，应该用 #[instrument]",
+          "is_correct": true
+        },
+        {
+          "id": "opt_e",
+          "content": "缺少 request_id 的传播和记录",
+          "is_correct": true
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码追踪实现完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "应该统一使用 tracing 库，避免混用 println! 导致日志格式不一致",
+        "opt_b": "应该添加 order_id = %order.id, user_id = %order.user_id 等结构化字段便于查询",
+        "opt_c": "处理耗时是正常的性能指标，应该用 info 级别，warn 通常用于异常但不致命的情况",
+        "opt_d": "可以为 process_payment 添加 #[instrument] 而不是手动管理 span",
+        "opt_e": "request_id 应该添加到 span 中，便于关联分布式请求",
+        "opt_f": "代码存在多个可观测性和日志最佳实践问题"
+      },
+      "key_points": [
+        "保持日志库使用的一致性，避免混用 println!",
+        "使用结构化字段而非字符串插值，便于查询和聚合",
+        "合理选择日志级别，info 用于正常业务流程"
+      ]
+    }
+  ]
+}

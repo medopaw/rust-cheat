@@ -1,0 +1,107 @@
+{
+  "module": "I/O",
+  "questions": [
+    {
+      "id": "io_001",
+      "title": "文件批处理服务",
+      "description": "需要实现一个文件批处理服务，要求：\n- 异步处理多个大文件\n- 支持超时控制\n- 处理网络和文件系统错误\n- 避免内存溢出",
+      "code": "use std::fs;\nuse std::path::Path;\nuse tokio::time::{timeout, Duration};\nuse reqwest;\n\nasync fn process_files_batch(file_paths: Vec<String>, api_url: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {\n    let mut results = Vec::new();\n    \n    for file_path in file_paths {\n        // 读取文件内容\n        let content = fs::read_to_string(&file_path)?;\n        \n        // 发送到API处理\n        let client = reqwest::Client::new();\n        let response = timeout(Duration::from_secs(30), \n            client.post(api_url)\n                .body(content)\n                .send()\n        ).await??;\n        \n        let result = response.text().await?;\n        results.push(result);\n        \n        // 备份原文件\n        let backup_path = format!(\"{}.backup\", file_path);\n        fs::copy(&file_path, &backup_path)?;\n    }\n    \n    Ok(results)\n}\n\nasync fn download_and_save(url: &str, save_path: &str) -> std::io::Result<()> {\n    let response = reqwest::get(url).await\n        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;\n    \n    let content = response.bytes().await\n        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;\n    \n    std::fs::write(save_path, content)?;\n    Ok(())\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "混用同步和异步 I/O，在 async 函数中使用 std::fs",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "大文件读取可能导致内存溢出",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "缺少网络请求的重试机制",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "顺序处理文件，没有利用并发优势",
+          "is_correct": true
+        },
+        {
+          "id": "opt_e",
+          "content": "timeout 使用不当，应该应用到整个批处理过程",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码 I/O 处理完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "在 async 函数中应该使用 tokio::fs 而不是 std::fs，避免阻塞异步运行时",
+        "opt_b": "应该使用流式处理或分块读取，避免一次性加载大文件到内存",
+        "opt_c": "网络请求可能因为临时问题失败，应该实现指数退避重试机制",
+        "opt_d": "可以使用 join! 或 try_join_all 并发处理多个文件，提高效率",
+        "opt_e": "对单个网络请求设置超时是合理的，批处理超时会限制处理文件数量",
+        "opt_f": "代码存在 I/O 模式选择和并发设计问题"
+      },
+      "key_points": [
+        "在异步环境中统一使用异步 I/O，避免阻塞运行时",
+        "大文件处理要考虑内存使用，使用流式或分块处理",
+        "网络操作需要重试机制应对临时故障"
+      ]
+    },
+    {
+      "id": "io_002",
+      "title": "配置热重载系统",
+      "description": "需要实现一个配置热重载系统，要求：\n- 监听配置文件变化\n- 异步重新加载配置\n- 处理文件读取错误\n- 支持多种配置格式",
+      "code": "use tokio::fs;\nuse tokio::time::{sleep, Duration};\nuse std::path::Path;\nuse serde_json;\nuse std::sync::Arc;\nuse tokio::sync::RwLock;\n\n#[derive(Clone, Debug)]\nstruct AppConfig {\n    database_url: String,\n    log_level: String,\n    feature_flags: Vec<String>,\n}\n\nstruct ConfigManager {\n    config: Arc<RwLock<AppConfig>>,\n    config_path: String,\n}\n\nimpl ConfigManager {\n    async fn start_hot_reload(&self) {\n        loop {\n            sleep(Duration::from_secs(5)).await;\n            \n            match self.reload_config().await {\n                Ok(_) => println!(\"配置重新加载成功\"),\n                Err(e) => println!(\"配置重新加载失败: {}\", e),\n            }\n        }\n    }\n    \n    async fn reload_config(&self) -> Result<(), Box<dyn std::error::Error>> {\n        // 检查文件是否存在\n        if !Path::new(&self.config_path).exists() {\n            return Err(\"配置文件不存在\".into());\n        }\n        \n        let content = fs::read_to_string(&self.config_path).await?;\n        \n        let new_config: AppConfig = if self.config_path.ends_with(\".json\") {\n            serde_json::from_str(&content)?\n        } else if self.config_path.ends_with(\".yaml\") {\n            // 假设有 YAML 解析器\n            return Err(\"YAML 支持未实现\".into());\n        } else {\n            return Err(\"不支持的配置格式\".into());\n        };\n        \n        // 更新配置\n        let mut config_guard = self.config.write().await;\n        *config_guard = new_config;\n        \n        Ok(())\n    }\n    \n    async fn get_config(&self) -> AppConfig {\n        self.config.read().await.clone()\n    }\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "使用轮询而不是文件系统事件监听，效率低",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "Path::exists() 是同步操作，在异步函数中不合适",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "配置重载失败时仍然打印成功消息，逻辑错误",
+          "is_correct": false
+        },
+        {
+          "id": "opt_d",
+          "content": "缺少配置验证，可能加载无效配置",
+          "is_correct": true
+        },
+        {
+          "id": "opt_e",
+          "content": "clone() 整个配置对象可能影响性能",
+          "is_correct": true
+        },
+        {
+          "id": "opt_f",
+          "content": "RwLock 的使用是不必要的，应该用 Mutex",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "应该使用 notify 或 inotify 等文件系统事件监听，而不是定时轮询",
+        "opt_b": "应该使用 tokio::fs::try_exists 或类似的异步方法检查文件存在性",
+        "opt_c": "代码正确处理了错误情况，只有成功时才打印成功消息",
+        "opt_d": "加载新配置后应该验证其有效性，避免加载破坏应用的配置",
+        "opt_e": "频繁的配置访问和克隆可能影响性能，考虑使用 Arc 共享只读配置",
+        "opt_f": "RwLock 适合读多写少的场景，这里读配置比写配置频繁，选择合理"
+      },
+      "key_points": [
+        "使用文件系统事件而不是轮询来监听文件变化",
+        "在异步环境中保持 I/O 操作的一致性",
+        "配置重载要包含验证步骤，确保配置有效性"
+      ]
+    }
+  ]
+}
