@@ -30,7 +30,7 @@
         {
           "id": "opt_e",
           "content": "缺少对特殊字符的处理",
-          "is_correct": true
+          "is_correct": false
         },
         {
           "id": "opt_f",

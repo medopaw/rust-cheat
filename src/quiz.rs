@@ -1067,12 +1067,9 @@ fn load_questions_for_module(engine: &mut QuizEngine, module: &str) {
             }
         }
         Err(e) => {
-            log_debug(&format!("加载失败: {}, 回退到硬编码", e));
-            // 回退到硬编码的题目（仅用于兼容）
-            match module_key.as_str() {
-                "Options" => load_options_questions_fallback(engine),
-                _ => {}
-            }
+            log_debug(&format!("加载失败: {}", e));
+            // JSON文件必须存在，不提供备用选项
+            panic!("无法加载题目文件 '{}': {}", file_path, e);
         }
     }
 }
@@ -1104,81 +1101,3 @@ fn extract_module_key(module_name: &str) -> String {
     cleaned.to_string()
 }
 
-// 备用题目加载函数（当JSON文件不可用时）
-fn load_options_questions_fallback(engine: &mut QuizEngine) {
-    let sample_question = Question {
-        id: "options_001".to_string(),
-        title: "用户输入验证函数".to_string(),
-        description: r#"需要实现一个用户输入验证函数，要求：
-- 接受用户输入的字符串
-- 验证输入不为空且长度在3-20字符之间
-- 返回验证结果，如果无效则说明原因
-- 支持邮箱格式的基本验证"#.to_string(),
-        code: r#"fn validate_user_input(input: &str) -> Result<String, String> {
-    if input.is_empty() {
-        return Err("输入不能为空".to_string());
-    }
-    
-    if input.len() < 3 {
-        return Err("输入太短".to_string());
-    }
-    
-    if input.contains('@') {
-        if !input.contains('.') {
-            return Err("邮箱格式无效".to_string());
-        }
-    }
-    
-    Ok(input.to_string())
-}"#.to_string(),
-        options: vec![
-            QuestionOption {
-                id: "opt_a".to_string(),
-                content: "缺少对最大长度的检查".to_string(),
-                is_correct: true,
-            },
-            QuestionOption {
-                id: "opt_b".to_string(),
-                content: "邮箱验证逻辑过于简单，无法处理复杂情况".to_string(),
-                is_correct: true,
-            },
-            QuestionOption {
-                id: "opt_c".to_string(),
-                content: "函数名称不够清晰".to_string(),
-                is_correct: false,
-            },
-            QuestionOption {
-                id: "opt_d".to_string(),
-                content: "应该使用 Option 而不是 Result".to_string(),
-                is_correct: false,
-            },
-            QuestionOption {
-                id: "opt_e".to_string(),
-                content: "缺少对特殊字符的处理".to_string(),
-                is_correct: true,
-            },
-            QuestionOption {
-                id: "opt_f".to_string(),
-                content: "此代码实现完全正确".to_string(),
-                is_correct: false,
-            },
-        ],
-        explanations: {
-            let mut map = HashMap::new();
-            map.insert("opt_a".to_string(), "需求明确要求长度在3-20字符之间，但代码只检查了最小长度，遗漏了最大长度检查".to_string());
-            map.insert("opt_b".to_string(), "简单的包含'@'和'.'检查无法验证真实的邮箱格式，如'@.'也会通过".to_string());
-            map.insert("opt_c".to_string(), "函数名validate_user_input已经很清晰地表达了其功能".to_string());
-            map.insert("opt_d".to_string(), "Result类型很适合这里，因为需要返回具体的错误信息".to_string());
-            map.insert("opt_e".to_string(), "需求未提及特殊字符处理，这不是必需的功能".to_string());
-            map.insert("opt_f".to_string(), "代码存在多个问题，并不完全正确".to_string());
-            map
-        },
-        key_points: vec![
-            "仔细阅读需求，确保所有条件都被实现".to_string(),
-            "简单的字符串包含检查往往不足以进行格式验证".to_string(),
-            "边界条件（如最大值）容易被遗漏".to_string(),
-        ],
-    };
-    
-    engine.add_question_for_module("Options", sample_question);
-}

@@ -75,7 +75,7 @@ pub fn match_quick(opt_a: Option<i32>, opt_b: Option<i32>) {
         println!("none");
     }
 
-    if let Err(e) = "42".parse::<i32>().map_err(|_| "parse err") {
+    if let Err(e) = "abc".parse::<i32>().map_err(|_| "parse err") {
         println!("err={}", e);
     }
 }
@@ -112,7 +112,7 @@ pub fn match_quick(opt_a: Option<i32>, opt_b: Option<i32>) {
         println!("none");
     }
 
-    if let Err(e) = "42".parse::<i32>().map_err(|_| "parse err") {
+    if let Err(e) = "abc".parse::<i32>().map_err(|_| "parse err") {
         println!("err={}", e);
     }
 }
