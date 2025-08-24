@@ -9,6 +9,14 @@ use std::io::{self, Cursor, BufReader, BufRead, Write, IsTerminal};
 use skim::prelude::*;
 use std::path::Path;
 use std::fs;
+use std::sync::OnceLock;
+
+// 全局 debug 标志
+static DEBUG_MODE: OnceLock<bool> = OnceLock::new();
+
+pub fn is_debug_enabled() -> bool {
+    *DEBUG_MODE.get().unwrap_or(&false)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Ide {
@@ -97,6 +105,15 @@ const MODULES: &[Module] = &[
 
 #[tokio::main]
 async fn main() {
+    // 检查命令行参数中是否包含 --debug
+    let args: Vec<String> = env::args().collect();
+    let debug_enabled = args.iter().any(|arg| arg == "--debug" || arg == "-d");
+    DEBUG_MODE.set(debug_enabled).unwrap();
+    
+    if debug_enabled {
+        println!("🐛 Debug mode enabled - logs will be written to debug.log");
+    }
+    
     println!("🦀 Rust Cheat Sheet - 交互式学习工具");
     println!("===============================================================");
     
@@ -112,6 +129,8 @@ async fn main() {
                 integrated_module_experience(module).await;
                 println!("\n按 Enter 继续...");
                 let _ = io::stdin().read_line(&mut String::new());
+                // 确保在返回菜单前完全清屏
+                clear_screen();
             }
             Ok(None) => {
                 println!("再见！👋");
@@ -617,9 +636,15 @@ fn run_skim_menu(items: &[String]) -> Result<Option<usize>, Box<dyn std::error::
     let options = SkimOptionsBuilder::default()
         .height(String::from("12"))
         .multi(false)
-        .prompt(String::from(""))
-        .header(Some("使用箭头键选择，Enter 确认，ESC 退出".to_string()))
+        .prompt(String::from(""))  // 显示搜索提示
+        .header(Some("使用↑↓/j/k选择，输入文字搜索，Enter确认，ESC退出".to_string()))
         .layout(String::from("reverse"))
+        .case(skim::CaseMatching::Ignore)  // 忽略大小写
+        // 保持vim风格键位绑定
+        .bind(vec![
+            "j:down".to_string(),
+            "k:up".to_string(),
+        ])
         .build()?;
     
     // 运行 skim
