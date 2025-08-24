@@ -51,6 +51,57 @@
         "join! 和 try_join! 是实现并发的重要工具",
         "错误处理要考虑异步场景的特殊性"
       ]
+    },
+    {
+      "id": "async_002",
+      "title": "微服务通信协调器",
+      "description": "需要实现一个微服务通信协调器，要求：\n- 调用多个微服务获取不同数据\n- 部分服务失败不影响整体结果\n- 设置合理的超时时间\n- 返回聚合后的服务响应",
+      "code": "use tokio::time::{timeout, Duration, sleep};\nuse std::time::Instant;\n\n#[derive(Debug)]\nstruct ServiceResponse {\n    service_name: String,\n    data: Option<String>,\n    error: Option<String>,\n    duration_ms: u64,\n}\n\n#[derive(Debug)]\nstruct AggregatedResponse {\n    user_service: ServiceResponse,\n    order_service: ServiceResponse,\n    payment_service: ServiceResponse,\n    total_duration_ms: u64,\n}\n\nasync fn coordinate_services(user_id: u64) -> AggregatedResponse {\n    let start_time = Instant::now();\n    \n    let user_future = call_user_service(user_id);\n    let order_future = call_order_service(user_id);\n    let payment_future = call_payment_service(user_id);\n    \n    let user_result = user_future.await;\n    let order_result = order_future.await;\n    let payment_result = payment_future.await;\n    \n    let total_duration = start_time.elapsed().as_millis() as u64;\n    \n    AggregatedResponse {\n        user_service: user_result,\n        order_service: order_result,\n        payment_service: payment_result,\n        total_duration_ms: total_duration,\n    }\n}\n\nasync fn call_user_service(user_id: u64) -> ServiceResponse {\n    let start = Instant::now();\n    let result = timeout(Duration::from_millis(500), fetch_user_data(user_id)).await;\n    let duration = start.elapsed().as_millis() as u64;\n    \n    match result {\n        Ok(Ok(data)) => ServiceResponse {\n            service_name: \"user_service\".to_string(),\n            data: Some(data),\n            error: None,\n            duration_ms: duration,\n        },\n        Ok(Err(e)) => ServiceResponse {\n            service_name: \"user_service\".to_string(),\n            data: None,\n            error: Some(e),\n            duration_ms: duration,\n        },\n        Err(_) => ServiceResponse {\n            service_name: \"user_service\".to_string(),\n            data: None,\n            error: Some(\"timeout\".to_string()),\n            duration_ms: 500,\n        },\n    }\n}\n\nasync fn call_order_service(user_id: u64) -> ServiceResponse {\n    // 类似的实现...\n    ServiceResponse {\n        service_name: \"order_service\".to_string(),\n        data: Some(\"order data\".to_string()),\n        error: None,\n        duration_ms: 200,\n    }\n}\n\nasync fn call_payment_service(user_id: u64) -> ServiceResponse {\n    // 类似的实现...\n    ServiceResponse {\n        service_name: \"payment_service\".to_string(), \n        data: Some(\"payment data\".to_string()),\n        error: None,\n        duration_ms: 300,\n    }\n}\n\nasync fn fetch_user_data(user_id: u64) -> Result<String, String> {\n    sleep(Duration::from_millis(100)).await;\n    Ok(format!(\"user data for {}\", user_id))\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "服务调用是串行执行的，没有实现真正的并发",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "代码重复太多，应该提取通用的服务调用逻辑",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "总执行时间计算不准确，应该是并发时间而非累计时间",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "缺少对所有服务调用的统一超时控制",
+          "is_correct": true
+        },
+        {
+          "id": "opt_e",
+          "content": "应该使用 Result 返回类型而不是在结构体中包含错误",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码的异步协调实现完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "当前代码依次 await 每个 future，应该使用 join! 或 try_join! 实现真正的并发调用",
+        "opt_b": "call_user_service、call_order_service、call_payment_service 有大量重复代码，应该抽象出通用函数",
+        "opt_c": "串行执行时总时间是各服务时间之和，并发执行时应该是最长服务的时间",
+        "opt_d": "除了单个服务超时，还应该对整体协调过程设置超时，防止整体操作时间过长",
+        "opt_e": "在微服务协调场景中，部分服务失败是常见情况，结构体包含错误信息是合理的设计",
+        "opt_f": "代码存在并发实现和代码结构问题"
+      },
+      "key_points": [
+        "使用 join! 或 tokio::spawn 实现真正的并发，避免串行等待",
+        "抽象重复的异步逻辑，提高代码复用性",
+        "微服务协调要考虑整体超时和容错设计"
+      ]
     }
   ]
 }

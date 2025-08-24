@@ -51,6 +51,57 @@
         "技术错误信息需要转换为用户能理解的语言",
         "anyhow 是 Rust 中处理应用级错误的好工具"
       ]
+    },
+    {
+      "id": "errors_002",
+      "title": "数据导入处理系统",
+      "description": "需要实现一个数据导入处理系统，要求：\n- 批量处理CSV文件数据\n- 验证和清洗数据\n- 记录处理进度和错误详情\n- 支持部分失败的容错处理",
+      "code": "use anyhow::{Context, Result, bail};\nuse std::fs::File;\nuse std::io::{BufRead, BufReader};\n\n#[derive(Debug)]\nstruct ImportResult {\n    total_rows: usize,\n    successful_rows: usize,\n    failed_rows: Vec<(usize, String)>, // (行号, 错误信息)\n}\n\n#[derive(Debug)]\nstruct UserRecord {\n    name: String,\n    age: u32,\n    email: String,\n}\n\nfn import_users_from_csv(file_path: &str) -> Result<ImportResult> {\n    let file = File::open(file_path).context(\"打开CSV文件失败\")?;\n    let reader = BufReader::new(file);\n    let mut lines = reader.lines();\n    \n    // 跳过表头\n    lines.next();\n    \n    let mut result = ImportResult {\n        total_rows: 0,\n        successful_rows: 0,\n        failed_rows: Vec::new(),\n    };\n    \n    for (line_num, line_result) in lines.enumerate() {\n        result.total_rows += 1;\n        \n        let line = line_result.context(\"读取行数据失败\")?;\n        \n        match parse_user_record(&line) {\n            Ok(user) => {\n                store_user_record(user).unwrap();\n                result.successful_rows += 1;\n            }\n            Err(e) => {\n                result.failed_rows.push((line_num + 2, e.to_string())); // +2 因为跳过了表头\n            }\n        }\n    }\n    \n    if result.failed_rows.len() > result.total_rows / 2 {\n        bail!(\"失败率过高，导入中断: {}/{} 行失败\", \n              result.failed_rows.len(), result.total_rows);\n    }\n    \n    Ok(result)\n}\n\nfn parse_user_record(line: &str) -> Result<UserRecord> {\n    let fields: Vec<&str> = line.split(',').collect();\n    \n    if fields.len() != 3 {\n        return Err(anyhow::anyhow!(\"字段数量不正确，期望3个字段，实际{}个\", fields.len()));\n    }\n    \n    let name = fields[0].trim().to_string();\n    if name.is_empty() {\n        return Err(anyhow::anyhow!(\"姓名不能为空\"));\n    }\n    \n    let age: u32 = fields[1].trim().parse()\n        .with_context(|| \"年龄解析失败\")?;\n    \n    let email = fields[2].trim().to_string();\n    if !email.contains('@') {\n        return Err(anyhow::anyhow!(\"邮箱格式无效\"));\n    }\n    \n    Ok(UserRecord { name, age, email })\n}\n\nfn store_user_record(user: UserRecord) -> Result<()> {\n    // 模拟数据库存储\n    if user.name == \"error\" {\n        bail!(\"数据库存储失败\");\n    }\n    Ok(())\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "使用 unwrap() 可能导致 panic，应该处理存储失败",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "单个行读取失败会中断整个导入过程",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "错误信息不够具体，缺少失败行的原始数据",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "缺少对整体导入操作的上下文包装",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "邮箱验证逻辑过于简单，应该用正则表达式",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码的错误处理完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "store_user_record 可能失败，使用 unwrap() 会导致 panic，应该处理错误并记录到失败列表",
+        "opt_b": "line_result.context() 的错误会直接返回，中断整个导入，应该记录错误后继续处理其他行",
+        "opt_c": "错误记录中应该包含失败的原始行数据，便于后续手动处理和调试",
+        "opt_d": "已经在关键位置使用了 context，整体错误处理是合理的",
+        "opt_e": "对于导入系统，简单的 '@' 检查是够用的，过度复杂的验证不是主要问题",
+        "opt_f": "代码存在 panic 风险和错误处理不完整的问题"
+      },
+      "key_points": [
+        "批处理系统要实现容错，单个记录失败不应影响整体处理",
+        "避免在错误处理流程中使用 unwrap()，保持错误处理的一致性",
+        "错误日志要包含足够的上下文信息，便于问题定位和数据修复"
+      ]
     }
   ]
 }

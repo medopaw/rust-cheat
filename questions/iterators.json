@@ -51,6 +51,57 @@
         "统计计算可以在一次遍历中完成",
         "使用标准库提供的方法通常比手动fold更清晰"
       ]
+    },
+    {
+      "id": "iterators_002",
+      "title": "日志分析系统",
+      "description": "需要实现一个日志分析系统，要求：\n- 解析Web服务器访问日志\n- 按IP地址分组统计访问次数\n- 查找访问频率最高的路径\n- 计算不同HTTP状态码的分布",
+      "code": "use std::collections::HashMap;\n\n#[derive(Debug, Clone)]\nstruct LogEntry {\n    ip: String,\n    path: String,\n    status_code: u16,\n    response_size: usize,\n}\n\n#[derive(Debug)]\nstruct LogAnalysis {\n    ip_counts: HashMap<String, usize>,\n    path_counts: HashMap<String, usize>,\n    status_distribution: HashMap<u16, usize>,\n    top_path: Option<String>,\n    total_bytes: usize,\n}\n\nfn analyze_logs(logs: Vec<LogEntry>) -> LogAnalysis {\n    // IP统计\n    let mut ip_counts = HashMap::new();\n    for entry in &logs {\n        let count = ip_counts.entry(entry.ip.clone()).or_insert(0);\n        *count += 1;\n    }\n    \n    // 路径统计\n    let mut path_counts = HashMap::new();\n    for entry in &logs {\n        let count = path_counts.entry(entry.path.clone()).or_insert(0);\n        *count += 1;\n    }\n    \n    // 状态码统计\n    let mut status_distribution = HashMap::new();\n    for entry in &logs {\n        let count = status_distribution.entry(entry.status_code).or_insert(0);\n        *count += 1;\n    }\n    \n    // 查找最热门路径\n    let top_path = path_counts.iter()\n        .max_by_key(|(_, &count)| count)\n        .map(|(path, _)| path.clone());\n    \n    // 计算总字节数\n    let total_bytes = logs.iter().map(|entry| entry.response_size).sum();\n    \n    LogAnalysis {\n        ip_counts,\n        path_counts,\n        status_distribution,\n        top_path,\n        total_bytes,\n    }\n}\n\nfn get_top_ips(analysis: &LogAnalysis, limit: usize) -> Vec<(String, usize)> {\n    let mut ip_list: Vec<_> = analysis.ip_counts.iter()\n        .map(|(ip, &count)| (ip.clone(), count))\n        .collect();\n    \n    ip_list.sort_by(|a, b| b.1.cmp(&a.1));\n    ip_list.into_iter().take(limit).collect()\n}\n\nfn calculate_error_rate(analysis: &LogAnalysis) -> f64 {\n    let total_requests: usize = analysis.status_distribution.values().sum();\n    let error_requests: usize = analysis.status_distribution.iter()\n        .filter(|(&status, _)| status >= 400)\n        .map(|(_, &count)| count)\n        .sum();\n    \n    if total_requests == 0 {\n        0.0\n    } else {\n        error_requests as f64 / total_requests as f64\n    }\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "多次遍历相同数据，可以用 fold 在一次遍历中完成所有统计",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "过度使用 clone()，可以用引用或移动优化",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "get_top_ips 中的 collect() 和 sort 可以用堆或优先队列优化",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "缺少对空日志列表的处理",
+          "is_correct": false
+        },
+        {
+          "id": "opt_e",
+          "content": "error_rate 计算应该过滤掉 3xx 重定向状态码",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码的迭代器使用完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "可以用一次 fold 操作同时更新所有 HashMap，减少多次遍历的开销",
+        "opt_b": "HashMap key 使用 &str 引用而不是 String，或者在构建时直接移动而不是 clone",
+        "opt_c": "对于 top-k 问题，可以使用 BinaryHeap 或只维护固定大小的最大值，避免全排序",
+        "opt_d": "代码对空列表处理是正确的，HashMap 为空，计算结果为默认值",
+        "opt_e": "3xx 状态码表示重定向，通常不算错误，但这取决于业务定义",
+        "opt_f": "代码存在性能和迭代器使用优化空间"
+      },
+      "key_points": [
+        "合并多个相似的迭代操作，减少数据遍历次数",
+        "注意 clone() 的性能影响，考虑使用引用或移动语义",
+        "对于 top-k 问题，考虑使用更高效的数据结构而不是全排序"
+      ]
     }
   ]
 }

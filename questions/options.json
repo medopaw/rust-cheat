@@ -51,6 +51,57 @@
         "简单的字符串包含检查往往不足以进行格式验证",
         "边界条件（如最大值）容易被遗漏"
       ]
+    },
+    {
+      "id": "options_002",
+      "title": "用户数据查询系统",
+      "description": "需要实现一个用户数据查询系统，要求：\n- 根据用户ID查找用户基本信息\n- 获取用户的订单历史\n- 合并数据返回完整用户资料\n- 处理用户不存在和查询错误的情况",
+      "code": "use std::collections::HashMap;\n\n#[derive(Debug, Clone)]\nstruct User {\n    id: u64,\n    name: String,\n    email: String,\n}\n\n#[derive(Debug, Clone)]\nstruct Order {\n    id: String,\n    amount: f64,\n}\n\n#[derive(Debug)]\nstruct UserProfile {\n    user: User,\n    orders: Vec<Order>,\n    total_spent: f64,\n}\n\nfn get_user_profile(user_id: u64) -> Result<UserProfile, String> {\n    // 查找用户基本信息\n    let user = find_user_by_id(user_id).unwrap();\n    \n    // 获取用户订单\n    let orders_result = get_user_orders(user_id);\n    let orders = match orders_result {\n        Ok(Some(order_list)) => order_list,\n        Ok(None) => Vec::new(),\n        Err(e) => return Err(format!(\"获取订单失败: {}\", e)),\n    };\n    \n    // 计算总消费\n    let total_spent = orders.iter().map(|order| order.amount).sum();\n    \n    Ok(UserProfile {\n        user: user.clone(),\n        orders,\n        total_spent,\n    })\n}\n\nfn find_user_by_id(id: u64) -> Option<User> {\n    if id == 1 {\n        Some(User {\n            id: 1,\n            name: \"Alice\".to_string(),\n            email: \"alice@example.com\".to_string(),\n        })\n    } else {\n        None\n    }\n}\n\nfn get_user_orders(user_id: u64) -> Result<Option<Vec<Order>>, String> {\n    if user_id == 0 {\n        return Err(\"数据库连接失败\".to_string());\n    }\n    \n    if user_id == 1 {\n        Ok(Some(vec![\n            Order { id: \"order1\".to_string(), amount: 99.99 },\n            Order { id: \"order2\".to_string(), amount: 149.99 },\n        ]))\n    } else {\n        Ok(None)\n    }\n}",
+      "options": [
+        {
+          "id": "opt_a",
+          "content": "使用 unwrap() 可能导致 panic，应该处理 None 情况",
+          "is_correct": true
+        },
+        {
+          "id": "opt_b",
+          "content": "没有区分\"用户不存在\"和\"数据库错误\"两种情况",
+          "is_correct": true
+        },
+        {
+          "id": "opt_c",
+          "content": "不必要的 clone() 操作影响性能",
+          "is_correct": true
+        },
+        {
+          "id": "opt_d",
+          "content": "Result<Option<T>, E> 的处理可以用 ? 操作符简化",
+          "is_correct": true
+        },
+        {
+          "id": "opt_e",
+          "content": "应该返回 Option<UserProfile> 而不是 Result",
+          "is_correct": false
+        },
+        {
+          "id": "opt_f",
+          "content": "此代码的 Option/Result 处理完全正确",
+          "is_correct": false
+        }
+      ],
+      "explanations": {
+        "opt_a": "find_user_by_id 返回 Option，直接 unwrap() 在用户不存在时会 panic，应该用 ? 或 match 处理",
+        "opt_b": "当前实现中用户不存在会 panic，应该返回不同的错误信息区分业务状态",
+        "opt_c": "user.clone() 不是必需的，可以直接移动 user 到 UserProfile 结构体中",
+        "opt_d": "可以用 let orders = get_user_orders(user_id)?.unwrap_or_default(); 简化处理",
+        "opt_e": "返回 Result 是正确的，因为需要区分成功/失败状态并提供错误信息",
+        "opt_f": "代码存在 panic 风险和 Option/Result 处理不当的问题"
+      },
+      "key_points": [
+        "避免在业务逻辑中使用 unwrap()，优先使用 ? 操作符进行错误传播",
+        "Result<Option<T>, E> 要正确区分三种状态：成功有值、成功无值、操作失败",
+        "合理使用移动语义，避免不必要的 clone 操作"
+      ]
     }
   ]
 }
